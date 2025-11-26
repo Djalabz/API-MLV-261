@@ -1,8 +1,10 @@
 
 const app = require('express')
 const router = app.Router();
-const db = require('../config/db');
+const db = require('../config/db')
 const bcrypt = require('bcrypt')
+const jwt = require("jsonwebtoken")
+require('dotenv').config()
 
 // ENSEMBLE DE ROUTES LIEES AU USER : /user/nomDeLaRoute
 router.post("/signup",  (req, res) => {
@@ -15,7 +17,7 @@ router.post("/signup",  (req, res) => {
     // Username pris ? Email pris ? -> si oui on informe le front et on annule le processus
     const sql = "SELECT * FROM users WHERE email = ? OR username = ?"
 
-    db.query(sql, [email, name], (error, results) => {
+    db.query(sql, [email, name],  (error, results) => {
         if (error) {
             res.status(500).send("Erreur lors de la vérification des infos")
         } else {
@@ -84,7 +86,18 @@ router.post("/login", (req, res) => {
                         res.status(500).send("Erreur lors de la vérification des passwords")
                     } else {
                         if (results) {
+                            // console.log(results)
+
+                            // Si il y a match pour le login on génére le jwt avec la clé secrète
+                            let token = jwt.sign({ userId: results.id }, process.env.SECRET_KEY, { expiresIn: '1d' })
+                            
+                            // On envoit le token dans un cookie en réponse vers le front 
+                            res.cookie('token', token, { expires:  new Date(Date.now() + 86400000), httpOnly: true, secure : true })
+
+                            // Message de confirmation
                             res.send("Le user est Login")
+                        
+                        
                         } else {
                             res.send("Mot de passe invalide")
                         }
@@ -95,8 +108,6 @@ router.post("/login", (req, res) => {
             }
         }
     })
-    
-
 })
 
 module.exports = router;
